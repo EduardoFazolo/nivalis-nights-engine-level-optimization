@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- .NET Framework 4.8 ships with Windows 10/11, so the installer runs without installing anything. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>NNELO-Setup</AssemblyName>
+    <RootNamespace>NivalisInstaller</RootNamespace>
+    <Version>1.0.0</Version>
+    <ApplicationManifest Condition="'$(Elevate)' != 'false'">app.manifest</ApplicationManifest>
+    <!-- Files embedded into the setup. Override with -p:ModDll=... -p:BepInExZip=... (CI uses placeholders). -->
+    <ModDll Condition="'$(ModDll)' == ''">..\..\NNELO\bin\Release\net6.0\NNELO.dll</ModDll>
+    <BepInExZip Condition="'$(BepInExZip)' == ''">..\..\.cache\bepinex.zip</BepInExZip>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <EmbeddedResource Include="$(ModDll)" LogicalName="NNELO.dll" />
+    <EmbeddedResource Include="$(BepInExZip)" LogicalName="bepinex.zip" />
+  </ItemGroup>
+</Project>

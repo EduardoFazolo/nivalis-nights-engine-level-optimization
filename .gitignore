@@ -1,0 +1,13 @@
+# Build output
+**/bin/
+**/obj/
+dist/
+*.user
+.vs/
+.idea/
+
+# Local-only material (reverse-engineering notes, tool caches, samples): never published
+reverse-engine/
+.cache/
+re/
+samples/

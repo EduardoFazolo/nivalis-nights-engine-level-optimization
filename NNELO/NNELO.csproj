@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>NNELO</AssemblyName>
+    <RootNamespace>NNELO</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- dotnet build -p:Diagnostics=true adds the in-game test panel (FPS overlay, live toggles, A/B benchmark). -->
+    <Diagnostics Condition="'$(Diagnostics)' == ''">false</Diagnostics>
+    <DefineConstants Condition="'$(Diagnostics)' == 'true'">$(DefineConstants);DIAGNOSTICS</DefineConstants>
+    <DeployToGame Condition="'$(DeployToGame)' == ''">false</DeployToGame>
+    <!-- Game install where BepInEx has run at least once (it generates BepInEx\interop on the first start). -->
+    <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Nivalis Nights</GameDir>
+    <Interop>$(GameDir)\BepInEx\interop</Interop>
+    <Core>$(GameDir)\BepInEx\core</Core>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="$(Core)\BepInEx.Core.dll" Private="false" />
+    <Reference Include="$(Core)\BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="$(Core)\0Harmony.dll" Private="false" />
+    <Reference Include="$(Core)\MonoMod.RuntimeDetour.dll" Private="false" />
+    <Reference Include="$(Core)\MonoMod.Utils.dll" Private="false" />
+    <Reference Include="$(Core)\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(Core)\Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="$(Interop)\Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="$(Interop)\UnityEngine.dll" Private="false" />
+    <Reference Include="$(Interop)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="$(Interop)\UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="$(Interop)\UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="$(Interop)\UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="$(Interop)\Unity.Postprocessing.Runtime.dll" Private="false" />
+    <Reference Include="$(Interop)\UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="$(Interop)\UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="$(Interop)\UnityEngine.ParticleSystemModule.dll" Private="false" />
+    <Reference Include="$(Interop)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="$(Interop)\Assembly-CSharp-firstpass.dll" Private="false" />
+    <Reference Include="$(Interop)\SALSA-LipSync.dll" Private="false" />
+    <Reference Include="$(Interop)\Il2CppSystem.Core.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Diagnostics)' != 'true'">
+    <Compile Remove="Modules\Diagnostics\**" />
+  </ItemGroup>
+
+  <Target Name="DeployToGame" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins" />
+  </Target>
+
+</Project>

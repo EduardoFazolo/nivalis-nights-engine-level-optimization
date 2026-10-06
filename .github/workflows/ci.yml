@@ -1,0 +1,75 @@
+name: CI
+
+# The mod itself compiles against assemblies that BepInEx generates from an installed copy of the game, which CI
+# does not have. CI therefore checks what can be checked without the game: repository hygiene, and that the
+# installer builds and installs/uninstalls correctly on a fake game folder.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No personal paths, e-mail addresses, binaries or local-only files
+        run: bash scripts/check-hygiene.sh
+
+  installer:
+    name: Installer build and install/uninstall test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Create placeholder payload (stands in for NNELO.dll and the BepInEx archive)
+        shell: pwsh
+        run: |
+          $p = Join-Path $env:RUNNER_TEMP "payload"
+          New-Item -ItemType Directory -Force -Path "$p/BepInEx/core" | Out-Null
+          Set-Content "$p/NNELO.dll" "placeholder"
+          Set-Content "$p/BepInEx/core/placeholder.txt" "placeholder"
+          Set-Content "$p/winhttp.dll" "placeholder"
+          Compress-Archive -Path "$p/BepInEx", "$p/winhttp.dll" -DestinationPath "$p/bepinex.zip"
+
+      - name: Build installer
+        shell: pwsh
+        run: >
+          dotnet build tools/Installer/Installer.csproj -c Release -o "$env:RUNNER_TEMP/setup"
+          -p:Elevate=false
+          -p:ModDll="$env:RUNNER_TEMP/payload/NNELO.dll"
+          -p:BepInExZip="$env:RUNNER_TEMP/payload/bepinex.zip"
+
+      - name: Install and uninstall on a fake game folder
+        shell: pwsh
+        run: |
+          $setup = "$env:RUNNER_TEMP/setup/NNELO-Setup.exe"
+          $log = "$env:RUNNER_TEMP/setup/setup.log"
+          $game = Join-Path $env:RUNNER_TEMP "game"
+          New-Item -ItemType Directory -Force -Path "$game/BepInEx/plugins" | Out-Null
+          New-Item -ItemType File "$game/Nivalis Nights.exe", "$game/GameAssembly.dll" | Out-Null
+          # Plugin files of earlier versions must be replaced.
+          New-Item -ItemType File "$game/BepInEx/plugins/NSE.dll", "$game/BepInEx/plugins/NivalisPerf.dll" | Out-Null
+
+          $p = Start-Process $setup -ArgumentList "--install", "`"$game`"" -Wait -PassThru
+          Get-Content $log
+          if ($p.ExitCode -ne 0) { throw "install failed" }
+          if (-not (Test-Path "$game/BepInEx/plugins/NNELO.dll")) { throw "NNELO.dll not installed" }
+          if (Test-Path "$game/BepInEx/plugins/NSE.dll") { throw "old NSE.dll not removed" }
+          if (Test-Path "$game/BepInEx/plugins/NivalisPerf.dll") { throw "old NivalisPerf.dll not removed" }
+          if (-not (Test-Path "$game/winhttp.dll")) { throw "BepInEx not extracted" }
+
+          $p = Start-Process $setup -ArgumentList "--uninstall", "`"$game`"" -Wait -PassThru
+          Get-Content $log
+          if ($p.ExitCode -ne 0) { throw "uninstall failed" }
+          $left = Get-ChildItem $game -Force | Select-Object -ExpandProperty Name | Sort-Object
+          if (($left -join ",") -ne "GameAssembly.dll,Nivalis Nights.exe") { throw "uninstall left files: $($left -join ', ')" }
+          Write-Host "Install/uninstall test passed."
